@@ -26,7 +26,7 @@ class AsyncSeleniumMiddleware:
         except AttributeError:
             return None
 
-        return self.driver_pool.deferred_response(request)
+        return self.driver_pool.get_response(request)
 
     def spider_closed(self, spider):
         self.driver_pool.close()

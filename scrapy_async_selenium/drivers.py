@@ -15,70 +15,101 @@ from .http import SeleniumRequest
 logger = logging.getLogger(__name__)
 
 
-class DriverItem:
-    def __init__(self):
+class Driver:
+    def __init__(self, pool: 'DriverPool' = None):
 #        profile = webdriver.FirefoxProfile()
 #        profile.set_preference("permissions.default.image", 3)
 #        self.driver = webdriver.Firefox(firefox_profile=profile)
-        self.driver = webdriver.Firefox()
-        self.busy = False
+        self.web_driver = webdriver.Firefox()
+        self._blocked = False
+        self.pool = pool
+
+    @property
+    def blocked(self):
+        return self._blocked
+
+    def block(self):
+        self._blocked = True
+
+    def unblock(self):
+        self._blocked = False
+        self.pool.update(self)
 
 
 class DriverPool:
     def __init__(self, size=1):
         self.size = size
         self.drivers = []
+        self._waiting = []
 
     def append_driver(self):
-        driver_item = DriverItem()
-        self.drivers.append(driver_item)
-        return driver_item
+        driver = Driver(pool=self)
+        self.drivers.append(driver)
+        return driver
 
     def close(self):
-        for item in self.drivers:
-            item.driver.close()
+        for driver in self.drivers:
+            driver.web_driver.close()
 
-    @staticmethod
-    def sleep(secs):
-        deferred = Deferred()
-        reactor.callLater(secs, deferred.callback, None)
-        return deferred
+    def update(self, driver):
+        """ Listener callback for DriverItem"""
+        if self._waiting:
+            free_driver = self._waiting.pop()
+            free_driver.callback(driver)
+            logger.info('Free deferred from waiting, len = %s', len(self._waiting))
 
-    def _get_free_driver(self) -> DriverItem:
-        free_drivers = [item for item in self.drivers if not item.busy]
+    def get_driver(self, keeped_driver=None):
+        if keeped_driver is not None:
+            free_driver = Deferred()
+            free_driver.callback(keeped_driver)
+            return free_driver
+        free_driver = Deferred()
+        free_drivers = [driver for driver in self.drivers if not driver.blocked]
         if free_drivers:
-            return free_drivers[0]
+            free_driver.callback(free_drivers[0])
+            logger.info("Free driver found")
         elif len(self.drivers) < self.size:
-            driver_item = self.append_driver()
-            return driver_item
+            driver = self.append_driver()
+            logger.info("Free driver not found. New driver appended")
+            free_driver.callback(driver)
         else:
-            logger.info("No free driver in the pool. Waiting...")
-            self.sleep(0.001)
-            return self._get_free_driver()
+            logger.info("Free driver not found. Waiting for ....")
+            self._waiting.append(free_driver)
+            logger.info('Append deferred tor waiting, len = %s', len(self._waiting))
+        return free_driver
 
     @staticmethod
-    def _get_url(driver_item: DriverItem, request: SeleniumRequest) -> HtmlResponse:
-        driver = driver_item.driver
-        if request.driver_id is None:
-            driver.get(request.url)
-        if request.before_response is not None:
-            request.before_response(driver)
-        body = to_bytes(driver.page_source)  # body must be of type bytes
-        driver_item.busy = False
-        return HtmlResponse(driver.current_url, body=body, encoding='utf-8', request=request)
+    def _get_url(driver: Driver, request: SeleniumRequest) -> HtmlResponse:
+        web_driver = driver.web_driver
+        if request.driver is None:
+            web_driver.get(request.url)
+        if request.driver_func is not None:
+            request.driver_func(web_driver,
+                                *request.driver_func_args,
+                                **request.driver_func_kwargs)
+        body = to_bytes(web_driver.page_source)  # body must be of type bytes
+        response = HtmlResponse(web_driver.current_url, body=body, encoding='utf-8', request=request)
+        response.meta['driver'] = driver
+        return response
 
-    def deferred_response(self, request: SeleniumRequest):
-        if request.driver_id is None:
-            driver_item = self._get_free_driver()
-        else:
-            try:
-                driver_item = self.drivers[request.driver_id]
-            except IndexError:
-                raise ValueError("Driver num {} doesn't exist".format(request.driver_id))
-        driver_item.busy = True
-        deferred = deferToThreadPool(reactor, reactor.getThreadPool(), self._get_url, driver_item, request)
+    @staticmethod
+    def _response(driver: Driver, request: SeleniumRequest) -> Deferred:
+        driver.block()
+        deferred = deferToThreadPool(reactor, reactor.getThreadPool(), DriverPool._get_url, driver, request)
         return deferred
 
+    @staticmethod
+    def _unblock(response: HtmlResponse):
+        driver = response.meta['driver']
+        if not response.request.keep_driver:
+            driver.unblock()
+            response.meta['driver'] = None
+        return response
+
+    def get_response(self, request: SeleniumRequest) -> Deferred:
+        driver = self.get_driver(request.driver)
+        response = driver.addCallback(self._response, request).addCallback(self._unblock)
+        return response
 
 
 
