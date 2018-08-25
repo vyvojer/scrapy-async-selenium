@@ -81,7 +81,7 @@ class MiddlewareTest(unittest.TestCase):
         process = CrawlerProcess()
         crawler_to_scrape = Crawler(ToScrapeSpider)
         crawler_python = Crawler(PythonSpider)
-        #        process.crawl(crawler_to_scrape)
+        process.crawl(crawler_to_scrape)
         process.crawl(crawler_python)
         crawler_to_scrape.signals.connect(MiddlewareTest.add_quote, item_scraped)
         crawler_python.signals.connect(MiddlewareTest.add_python_item, item_scraped)
@@ -98,10 +98,12 @@ class MiddlewareTest(unittest.TestCase):
         if 'result' in item:
             MiddlewareTest.python_results.append(item)
 
-    def _test_to_scrape(self):
+    def test_to_scrape(self):
         self.assertEqual(len(MiddlewareTest.to_scrape_items), 100)
 
     def test_python_title(self):
         self.assertEqual(self.python_title[0]['title'], "Welcome to Python.org")
+
+    def test_python_results(self):
         self.assertGreater(len(self.python_results), 2)
         self.assertIn('Release – ', [r['result'] for r in self.python_results])
