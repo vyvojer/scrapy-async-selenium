@@ -1,9 +1,5 @@
 from scrapy.crawler import Crawler
-from scrapy.http import HtmlResponse
-from scrapy.utils.python import to_bytes
 from scrapy import signals
-
-from selenium import webdriver
 
 from .http import SeleniumRequest
 from .drivers import DriverPool

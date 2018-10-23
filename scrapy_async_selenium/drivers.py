@@ -17,9 +17,6 @@ logger = logging.getLogger(__name__)
 
 class Driver:
     def __init__(self, pool: 'DriverPool' = None):
-#        profile = webdriver.FirefoxProfile()
-#        profile.set_preference("permissions.default.image", 3)
-#        self.driver = webdriver.Firefox(firefox_profile=profile)
         self.web_driver = webdriver.Firefox()
         self._blocked = False
         self.pool = pool
