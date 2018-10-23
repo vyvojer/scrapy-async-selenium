@@ -21,7 +21,7 @@ class ToScrapeSpider(Spider):
         'CONCURRENT_REQUESTS_PER_DOMAIN': 10,
         'LOG_LEVEL': 'DEBUG',
         'DOWNLOADER_MIDDLEWARES': {'scrapy_async_selenium.middlewares.AsyncSeleniumMiddleware': 3, },
-        'SELENIUM_POOL_SIZE': 2,
+        'SELENIUM_POOL_SIZE': 5,
     }
 
     def start_requests(self):
