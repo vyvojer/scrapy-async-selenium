@@ -35,6 +35,7 @@ The function must have one required parameter of the **selenium.webdriver.remote
 Send the function as **driver_func** parameter of **SeleniumRequest**. 
 Send args and kwargs for the function as **driver_func_args** and **driver_func_kwargs** of **SeleniumRequest**.
 
+    # Fill search field of 'python.org', press 'Enter', wait for results
     def search(self, webdriver: WebDriver, search: str):
         input = webdriver.find_element_by_xpath("//input[@id='id-search-field']")
         input.clear()
@@ -43,6 +44,7 @@ Send args and kwargs for the function as **driver_func_args** and **driver_func_
         WebDriverWait(webdriver, 15).until(
             EC.visibility_of_element_located((By.XPATH, "//h3[contains(text(),'Results')]")))
             
+    # Open 'python.org' with self.search function
     def start_requests(self):
         url = 'https://www.python.org'
                 yield SeleniumRequest(callback=self.parse_search,
