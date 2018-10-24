@@ -1,7 +1,7 @@
 Async Selenium middleware for Scrapy
 =====================================
 
-Middleware allows to  asynchronously and simultaneously  use multiple Selenium instances with Scrapy
+Middleware allows to  use multiple Selenium instances  asynchronously and simultaneously.
 
 ## Install
 
