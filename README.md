@@ -6,7 +6,7 @@ Middleware allows to async use multiple Selenium instance with Scrapy
 ## Install
 
     git clone git@github.com:vyvojer/scrapy-async-selenium.git
-    cd crapy-async-selenium
+    cd scrapy-async-selenium
     python setup.py install --user
     
 ## Using
